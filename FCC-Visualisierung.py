@@ -1,9 +1,10 @@
-#Erstellung eines FCC Gitters mit Numpy und Matplotlib
+#Erstellung eines FCC Gitters mit Numpy und Pyvista
 import numpy as np
-import matplotlib.pyplot as plt
 import pyvista as pv
+import itertools as it
 import tkinter as tk
 from tkinter import simpledialog
+from tkinter import messagebox
 
 # Funktion zur Generierung der FCC Gitterpunkte
 # a: Gitterkonstante, n: Anzahl der Einheiten in jeder Richtung
@@ -40,16 +41,40 @@ def plot_fcc_pyvista(points, a):
         plotter.add_mesh(sphere, color=color, opacity=1)
     plotter.show()
 
+def einheitszellenvektoren(a):
+    allowed_points = [np.array(c) for c in it.product([0, a], repeat=3)]
+    for axis in range(3):
+        for element in [0, a]:
+            v=np.array([a/2, a/2, a/2])
+            v[axis] = element
+            allowed_points.append(v)
+    return allowed_points
+
 # --- Eingabefenster für a und n ---
 root = tk.Tk()
 root.withdraw()  # Hauptfenster ausblenden
 
-a = simpledialog.askfloat("Gitterkonstante", "Länge der Gitterkonstante:", minvalue=0.01)
-n = simpledialog.askinteger("Atomanzahl in jede Richtung", "Atomanzahl in jede Richtung:", minvalue=1)
+plot_unit = messagebox.askyesno(
+    title="Einheitszelle?",
+    message="Möchten Sie nur eine Einheitszelle plotten?")
+
+if plot_unit:
+    # Nur a abfragen
+    a = simpledialog.askfloat("Gitterkonstante","Länge der Gitterkonstante",minvalue=0.01)
+    
+    if a is not None:
+        points = einheitszellenvektoren(a)
+        plot_fcc_pyvista(points, a)
+    else:
+        print("Abgebrochen.")
+else:
+    # a und n abfragen
+    a = simpledialog.askfloat("Gitterkonstante", "Länge der Gitterkonstante:", minvalue=0.01)
+    n = simpledialog.askinteger("Atomanzahl in jede Richtung", "Atomanzahl in jede Richtung:", minvalue=1)
+
+    if a is not None and n is not None:
+        plot_fcc_pyvista(generate_fcc(a, n), a)
+    else:
+        print("Abgebrochen.")
 
 root.destroy()
-
-if a is not None and n is not None:
-    plot_fcc_pyvista(generate_fcc(a, n), a)
-else:
-    print("Abgebrochen.")
