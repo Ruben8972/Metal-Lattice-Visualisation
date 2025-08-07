@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import simpledialog
 from tkinter import messagebox
-from fcc.plotting import plot_phys_ez, plot_fcc_pyvista
+from fcc.plotting import plot_phys_ez, plot_fcc_pyvista, plot_clipped_ez
 from fcc.generation import generate_fcc
 
 def run_gui():
@@ -18,7 +18,12 @@ def run_gui():
         a = simpledialog.askfloat("Gitterkonstante","Länge der Gitterkonstante",minvalue=0.01)
         
         if a is not None:
-            plot_phys_ez(a)
+            clipped = messagebox.askyesno(
+                title="Einheitszelle-Typ",
+                message="Möchten Sie die Einheitszelle geclippt anzeigen?")
+            if clipped:
+                plot_clipped_ez(a)
+            else: plot_phys_ez(a)
         else:
             print("Abgebrochen.")
 
