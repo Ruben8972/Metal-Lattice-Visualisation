@@ -1,15 +1,14 @@
 import pyvista as pv
 import numpy as np
-from fcc.generation import einheitszellenvektoren
+from fcc.generation import generate_fcc, einheitszellenvektoren_fcc, generate_bcc, einheitszellenvektoren_bcc
 
 # Funktion zur Visualisierung des FCC Gitters mit PyVista
-def plot_fcc_pyvista(points, a):
+def plot_fcc_pyvista(points_fcc, a):
     r = (np.sqrt(2) * a) / 4
     plotter = pv.Plotter()
     colors = []
-
     # Überprüfen der dichtesten Ebenen, zuweisen von Farben und erzeugen der Kugeln
-    for p in points:
+    for p in points_fcc:
         val= p[0] + p[1] + p[2]
         m= int(round(val/a))
         if m % 3 == 0:
@@ -24,8 +23,8 @@ def plot_fcc_pyvista(points, a):
         plotter.add_mesh(sphere, color=color, opacity=1)
     plotter.show()
 
-def plot_phys_ez(a):
-    points = einheitszellenvektoren(a)
+def plot_phys_ez_fcc(a):
+    points = einheitszellenvektoren_fcc(a)
     plot_fcc_pyvista(points, a)
 
 def plot_clipped_ez(a: float):
@@ -42,7 +41,7 @@ def plot_clipped_ez(a: float):
 
     # 1) Erzeuge und trianguliere jede Kugel, sammle in MultiBlock
     blocks = pv.MultiBlock()
-    for p in einheitszellenvektoren(a):
+    for p in einheitszellenvektoren_fcc(a):
         sph = pv.Sphere(radius=r, center=p).extract_surface().triangulate()
         blocks.append(sph)
 
@@ -80,3 +79,22 @@ def plot_clipped_ez(a: float):
     p = pv.Plotter()
     p.add_mesh(mesh, scalars="cell_color", rgb=True, smooth_shading=True)
     p.show()
+
+def plot_bcc_pyvista(points_bcc, a):
+    r = (np.sqrt(3) * a) /4
+    plotter = pv.Plotter()
+    color = []
+    for p in points_bcc:
+        val = p[0] + p[1] + p[2]
+        m = int(round(2*val/a))
+        if m % 2 == 0:
+            color = 'blue'
+        else:
+            color = 'red'
+        sphere = pv.Sphere(radius=r, center=p)
+        plotter.add_mesh(sphere, color=color, opacity=1)
+    plotter.show()
+
+def plot_phys_ez_bcc(a):
+    points = einheitszellenvektoren_bcc(a)
+    plot_bcc_pyvista(points, a)

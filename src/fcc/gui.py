@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
-from fcc.plotting import plot_phys_ez, plot_fcc_pyvista, plot_clipped_ez
-from fcc.generation import generate_fcc
+from fcc.plotting import plot_fcc_pyvista, plot_phys_ez_fcc, plot_clipped_ez, plot_bcc_pyvista, plot_phys_ez_bcc
+from fcc.generation import generate_fcc, generate_bcc
 
 def run_gui():
      # 1. Auswahlfenster für Gittertyp
@@ -56,7 +56,7 @@ def run_gui():
                     message="Möchten Sie die Einheitszelle geclippt anzeigen?")
                 if clipped:
                     plot_clipped_ez(a)
-                else: plot_phys_ez(a)
+                else: plot_phys_ez_fcc(a)
             else:
                 print("Abgebrochen.")
 
@@ -76,5 +76,33 @@ def run_gui():
     elif gittertyp == "hcp":
         messagebox.showinfo("HCP", "HCP-Gitter ist noch nicht implementiert.")
     elif gittertyp == "bcc":
-        messagebox.showinfo("BCC", "BCC-Gitter ist noch nicht implementiert.")
+         # Eingabefenster
+        root = tk.Tk()
+        root.withdraw()  # Hauptfenster ausblenden
+
+        # Auswahl Einheitszelle oder vollständiges Gitter
+        plot_unit = messagebox.askyesno(
+            title="Einheitszelle?",
+            message="Möchten Sie nur eine Einheitszelle plotten?")
+        if plot_unit:
+            a = simpledialog.askfloat("Gitterkonstante", "Länge der Gitterkonstante:", minvalue=0.01)
+            
+            if a is not None:
+                clipped = messagebox.askyesno(
+                    title="Einheitszelle-Typ",
+                    message="Möchten Sie die Einheitszelle geclippt anzeigen?")
+                if clipped:
+                    messagebox.showinfo("BCC", "Clipped Einheitszelle für BCC ist noch nicht implementiert.")
+                else: plot_phys_ez_bcc(a)
+            else:
+                print("Abgebrochen.")
+        else:
+            # a und n abfragen
+            a = simpledialog.askfloat("Gitterkonstante", "Länge der Gitterkonstante:", minvalue=0.01)
+            n = simpledialog.askinteger("Atomanzahl in jede Richtung", "Atomanzahl in jede Richtung:", minvalue=1)
+
+            if a is not None and n is not None:
+                plot_bcc_pyvista(generate_bcc(a, n), a)
+            else:
+                print("Abgebrochen.")
     else: print ("Programmabbruch")
