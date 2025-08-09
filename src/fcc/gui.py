@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
-from fcc.plotting import plot_fcc_pyvista, plot_phys_ez_fcc, plot_clipped_ez, plot_bcc_pyvista, plot_phys_ez_bcc
+from fcc.plotting import plot_fcc_pyvista, plot_phys_ez_fcc, plot_clipped_ez, plot_bcc_pyvista
 from fcc.generation import generate_fcc, generate_bcc
 
 def run_gui():
@@ -93,7 +93,7 @@ def run_gui():
                     message="Möchten Sie die Einheitszelle geclippt anzeigen?")
                 if clipped:
                     messagebox.showinfo("BCC", "Clipped Einheitszelle für BCC ist noch nicht implementiert.")
-                else: plot_phys_ez_bcc(a)
+                else: plot_bcc_pyvista(generate_bcc(a, 2), a)
             else:
                 print("Abgebrochen.")
         else:
