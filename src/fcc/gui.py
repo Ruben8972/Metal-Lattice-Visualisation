@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
-from fcc.plotting import plot_fcc_pyvista, plot_phys_ez_fcc, plot_clipped_ez, plot_bcc_pyvista
+from fcc.plotting import plot_bcc_pyvista
 from fcc.generation import generate_fcc, generate_bcc
 
 def run_gui():
