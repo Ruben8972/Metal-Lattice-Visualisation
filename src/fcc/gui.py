@@ -1,12 +1,12 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
-from fcc.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc
-from fcc.generation import generate_fcc, generate_bcc
+from fcc.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc, radius_hcp, colors_hcp
+from fcc.generation import generate_fcc, generate_bcc, generate_hcp
 
 GITTER = {
     "fcc": {"generate": generate_fcc, "radius": radius_fcc, "colors": colors_fcc},
     "bcc": {"generate": generate_bcc, "radius": radius_bcc, "colors": colors_bcc},
-    # "hcp": {"generate": generate_hcp, "radius": radius_hcp, "colors": colors_hcp},
+    "hcp": {"generate": generate_hcp, "radius": radius_hcp, "colors": colors_hcp},
 }
 
 def center_window(window, width=250, height=180):
