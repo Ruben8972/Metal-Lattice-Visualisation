@@ -3,106 +3,104 @@ from tkinter import simpledialog, messagebox
 from fcc.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc
 from fcc.generation import generate_fcc, generate_bcc
 
-def run_gui():
-     # 1. Auswahlfenster für Gittertyp
-    auswahl = {}
+GITTER = {
+    "fcc": {"generate": generate_fcc, "radius": radius_fcc, "colors": colors_fcc},
+    "bcc": {"generate": generate_bcc, "radius": radius_bcc, "colors": colors_bcc},
+    # "hcp": {"generate": generate_hcp, "radius": radius_hcp, "colors": colors_hcp},
+}
 
-    def set_gittertyp(typ):
-        auswahl['typ'] = typ
-        auswahlfenster.destroy()
-    
-    def center_window(window, width=250, height=180):
-        window.update_idletasks()
-        screen_width = window.winfo_screenwidth()
-        screen_height = window.winfo_screenheight()
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
-        window.geometry(f"{width}x{height}+{x}+{y}")
+def center_window(window, width=250, height=180):
+    window.withdraw()
+    window.update_idletasks()
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    x = (screen_width // 2) - (width // 2)
+    y = (screen_height // 2) - (height // 2)
+    window.geometry(f"{width}x{height}+{x}+{y}")
+    window.deiconify()
 
-    auswahlfenster = tk.Tk()
-    auswahlfenster.withdraw()  # Unsichtbar starten!
+def ask_and_plot(kind: str, fns: dict) -> None:
+    root = tk.Tk()
+    root.withdraw()
 
-    auswahlfenster.title("Gitter auswählen")
-    center_window(auswahlfenster, 250, 180)
+    plot_unit = messagebox.askyesno(
+        parent=root,
+        title="Einheitszelle?",
+        message="Möchten Sie nur eine Einheitszelle plotten?",
+    )
 
-    frage = tk.Label(auswahlfenster, text="Welches Gitter wollen Sie erstellen?")
-    frage.pack(pady=10)
-
-    for name in ["fcc", "hcp", "bcc"]:
-        tk.Button(auswahlfenster, text=name.upper(), width=10,
-                  command=lambda typ=name: set_gittertyp(typ)).pack(pady=5)
-
-    auswahlfenster.deiconify()  # Jetzt erst anzeigen!
-    auswahlfenster.mainloop()
-    gittertyp = auswahl.get('typ', None)
-
-    if gittertyp == "fcc":
-
-        # Eingabefenster
-        root = tk.Tk()
-        root.withdraw()  # Hauptfenster ausblenden
-
-        # Auswahl Einheitszelle oder vollständiges Gitter
-        plot_unit = messagebox.askyesno(
-            title="Einheitszelle?",
-            message="Möchten Sie nur eine Einheitszelle plotten?")
-
-        if plot_unit:
-            a = simpledialog.askfloat("Gitterkonstante","Länge der Gitterkonstante",minvalue=0.01)
-            
-            if a is not None:
-                clipped = messagebox.askyesno(
-                    title="Einheitszelle-Typ",
-                    message="Möchten Sie die Einheitszelle geclippt anzeigen?")
-                if clipped:
-                    messagebox.showinfo("FCC", "Clipped Einheitszelle für FCC ist noch nicht implementiert.")
-                else: plot_crystal_pyvista(generate_fcc(a, 2), radius_fcc(a), colors_fcc(generate_fcc(a, 2), a))
-            else:
-                print("Abgebrochen.")
-
-        #Auswahl parameter für vollständiges Gitter
-        else:
-            # a und n abfragen
-            a = simpledialog.askfloat("Gitterkonstante", "Länge der Gitterkonstante:", minvalue=0.01)
-            n = simpledialog.askinteger("Atomanzahl in jede Richtung", "Atomanzahl in jede Richtung:", minvalue=1)
-
-            if a is not None and n is not None:
-                plot_crystal_pyvista(generate_fcc(a, n), radius_fcc(a), colors_fcc(generate_fcc(a, n), a))
-            else:
-                print("Abgebrochen.")
-
+    a = simpledialog.askfloat(
+        "Gitterkonstante",
+        "Länge der Gitterkonstante:",
+        parent=root,
+        minvalue=0.01,
+    )
+    if a is None:
         root.destroy()
+        print("Abgebrochen.")
+        return
+    
+    if plot_unit:
+        clipped = messagebox.askyesno(
+            parent=root,
+            title="Einheitszelle-Typ",
+            message="Möchten Sie die Einheitszelle geclippt anzeigen?",
+        )
+        if clipped:
+            messagebox.showinfo(kind.upper(), f"Clipped Einheitszelle für {kind.upper()} ist noch nicht implementiert.")
+            root.destroy()
+            return
+        pts = fns["generate"](a, 2)
 
-    elif gittertyp == "hcp":
-        messagebox.showinfo("HCP", "HCP-Gitter ist noch nicht implementiert.")
-    elif gittertyp == "bcc":
-         # Eingabefenster
-        root = tk.Tk()
-        root.withdraw()  # Hauptfenster ausblenden
+    else:
+        n = simpledialog.askinteger(
+            "Atomanzahl in jede Richtung",
+            "Atomanzahl in jede Richtung:",
+            parent=root,
+            minvalue=1,
+        )
+        if n is None:
+            root.destroy()
+            print("Abgebrochen.")
+            return
+        pts = fns["generate"](a, n)
+    
+    r = fns["radius"](a)
+    cols = fns["colors"](pts, a)
+    plot_crystal_pyvista(pts, r, cols)
 
-        # Auswahl Einheitszelle oder vollständiges Gitter
-        plot_unit = messagebox.askyesno(
-            title="Einheitszelle?",
-            message="Möchten Sie nur eine Einheitszelle plotten?")
-        if plot_unit:
-            a = simpledialog.askfloat("Gitterkonstante", "Länge der Gitterkonstante:", minvalue=0.01)
-            
-            if a is not None:
-                clipped = messagebox.askyesno(
-                    title="Einheitszelle-Typ",
-                    message="Möchten Sie die Einheitszelle geclippt anzeigen?")
-                if clipped:
-                    messagebox.showinfo("BCC", "Clipped Einheitszelle für BCC ist noch nicht implementiert.")
-                else: plot_crystal_pyvista(generate_bcc(a, 2), radius_bcc(a), colors_bcc(generate_bcc(a, 2), a))
-            else:
-                print("Abgebrochen.")
-        else:
-            # a und n abfragen
-            a = simpledialog.askfloat("Gitterkonstante", "Länge der Gitterkonstante:", minvalue=0.01)
-            n = simpledialog.askinteger("Atomanzahl in jede Richtung", "Atomanzahl in jede Richtung:", minvalue=1)
+    root.destroy()
 
-            if a is not None and n is not None:
-                plot_crystal_pyvista(generate_bcc(a, n), radius_bcc(a), colors_bcc(generate_bcc(a, n), a))
-            else:
-                print("Abgebrochen.")
-    else: print ("Programmabbruch")
+def run_gui() -> None:
+    
+    selection = {}
+
+    def set_choice(typ: str) -> None:
+        selection["typ"] = typ
+        win.destroy()
+    
+    win = tk.Tk()
+    win.title("Gitter auswählen")
+    center_window(win, 260, 220)
+
+    tk.Label(win, text="Welches Gitter wollen Sie erstellen?").pack(pady=10)
+    for name in ["fcc", "bcc", "hcp"]:
+        btn = tk.Button(win, 
+                text=name.upper(), 
+                width=12, 
+                command=lambda t=name: set_choice(t)
+                )
+        btn.pack(pady=5)
+    win.mainloop()
+
+    kind = selection.get("typ")
+    if not kind:
+        print("Programmabbruch")
+        return
+
+    fns = GITTER.get(kind)
+    if fns is None:
+        messagebox.showinfo(kind.upper(), f"{kind.upper()} ist noch nicht implementiert.")
+        return
+
+    ask_and_plot(kind, fns)
