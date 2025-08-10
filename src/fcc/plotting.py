@@ -2,31 +2,6 @@ import pyvista as pv
 import numpy as np
 from fcc.generation import generate_fcc, generate_bcc
 
-# Funktion zur Visualisierung des FCC Gitters mit PyVista
-# def plot_fcc_pyvista(points_fcc, a):
-#     r = (np.sqrt(2) * a) / 4
-#     plotter = pv.Plotter()
-#     colors = []
-#     # Überprüfen der dichtesten Ebenen, zuweisen von Farben und erzeugen der Kugeln
-#     for p in points_fcc:
-#         val= p[0] + p[1] + p[2]
-#         m= int(round(val/a))
-#         if m % 3 == 0:
-#             color = 'red'
-#         elif (m-1) % 3 == 0:
-#             color = 'blue'
-#         elif (m-2) % 3 == 0:
-#             color = 'green'
-#         else:
-#             color = 'gray'
-#         sphere = pv.Sphere(radius=r, center=p)
-#         plotter.add_mesh(sphere, color=color, opacity=1)
-#     plotter.show()
-
-# def plot_phys_ez_fcc(a):
-#     points = einheitszellenvektoren_fcc(a)
-#     plot_fcc_pyvista(points, a)
-
 # def plot_clipped_ez(a: float):
 
 #     # Kugelradius
@@ -73,28 +48,26 @@ from fcc.generation import generate_fcc, generate_bcc
 #     p.add_mesh(mesh, scalars="cell_color", rgb=True, smooth_shading=True)
 #     p.show()
 
-# def radius_bcc(a):
-#     return (np.sqrt(3) / 4) * a
+def radius_bcc(a):
+    return (np.sqrt(3) / 4) * a
 
-# def radius_fcc(a):
-#     return (np.sqrt(2) / 4) * a
+def radius_fcc(a):
+    return (np.sqrt(2) / 4) * a
 
-# def colors_bcc(points, a, tol=1e-5):
-    
-#     frac = (points / a) % 1.0
-#     is_half = np.any(np.isclose(frac, 0.5, atol=tol), axis=1)
-#     colors = np.zeros((len(points), 3), dtype=np.uint8)
-#     colors[is_half]  = [255, 0, 0]   # body-center
-#     colors[~is_half] = [0, 0, 255]   # corners
-#     return colors
+def colors_bcc(points, a, tol=1e-5):
+    frac = (points / a) % 1.0
+    is_half = np.any(np.isclose(frac, 0.5, atol=tol), axis=1)
+    colors = np.zeros((len(points), 3), dtype=np.uint8)
+    colors[is_half]  = [255, 0, 0]   # body-center
+    colors[~is_half] = [0, 0, 255]   # corners
+    return colors
 
-#  # Farben vorbereiten
-#     is_half = np.any(np.isclose(points % 1.0, 0.5, atol=1e-6), axis=1)
-#     colors = np.zeros((len(points), 3), dtype=np.uint8)
-#     colors[is_half] = [255, 0, 0]
-#     colors[~is_half] = [0, 0, 255]
+def colors_fcc(points, a):
+    m = np.rint(points.sum(axis=1) / a).astype(np.int32)
+    lut = np.array([[255, 0, 0], [0, 120, 255], [0, 200, 80]], dtype=np.uint8)
+    return lut[m % 3]
 
-def plot_bcc_pyvista(points, a):
+def plot_crystal_pyvista(points, r, colors):
     def auto_resolution(points, target_tris=2_000_000):
         atoms = len(points)
         tris_per_sphere = target_tris / atoms
@@ -102,14 +75,6 @@ def plot_bcc_pyvista(points, a):
         return max(8, min(100, res))
 
     start_res = auto_resolution(points)
-
-    # Farben vorbereiten
-    is_half = np.any(np.isclose(points % 1.0, 0.5, atol=1e-6), axis=1)
-    colors = np.zeros((len(points), 3), dtype=np.uint8)
-    colors[is_half] = [255, 0, 0]
-    colors[~is_half] = [0, 0, 255]
-
-    r = (np.sqrt(3) / 4) * a
 
     # Initial-Glyphs + Farben setzen
     sphere = pv.Sphere(radius=r, theta_resolution=start_res, phi_resolution=start_res)

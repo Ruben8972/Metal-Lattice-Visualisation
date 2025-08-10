@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
-from fcc.plotting import plot_bcc_pyvista
+from fcc.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc
 from fcc.generation import generate_fcc, generate_bcc
 
 def run_gui():
@@ -55,8 +55,8 @@ def run_gui():
                     title="Einheitszelle-Typ",
                     message="Möchten Sie die Einheitszelle geclippt anzeigen?")
                 if clipped:
-                    plot_clipped_ez(a)
-                else: plot_phys_ez_fcc(a)
+                    messagebox.showinfo("FCC", "Clipped Einheitszelle für FCC ist noch nicht implementiert.")
+                else: plot_crystal_pyvista(generate_fcc(a, 2), radius_fcc(a), colors_fcc(generate_fcc(a, 2), a))
             else:
                 print("Abgebrochen.")
 
@@ -67,7 +67,7 @@ def run_gui():
             n = simpledialog.askinteger("Atomanzahl in jede Richtung", "Atomanzahl in jede Richtung:", minvalue=1)
 
             if a is not None and n is not None:
-                plot_fcc_pyvista(generate_fcc(a, n), a)
+                plot_crystal_pyvista(generate_fcc(a, n), radius_fcc(a), colors_fcc(generate_fcc(a, n), a))
             else:
                 print("Abgebrochen.")
 
@@ -93,7 +93,7 @@ def run_gui():
                     message="Möchten Sie die Einheitszelle geclippt anzeigen?")
                 if clipped:
                     messagebox.showinfo("BCC", "Clipped Einheitszelle für BCC ist noch nicht implementiert.")
-                else: plot_bcc_pyvista(generate_bcc(a, 2), a)
+                else: plot_crystal_pyvista(generate_bcc(a, 2), radius_bcc(a), colors_bcc(generate_bcc(a, 2), a))
             else:
                 print("Abgebrochen.")
         else:
@@ -102,7 +102,7 @@ def run_gui():
             n = simpledialog.askinteger("Atomanzahl in jede Richtung", "Atomanzahl in jede Richtung:", minvalue=1)
 
             if a is not None and n is not None:
-                plot_bcc_pyvista(generate_bcc(a, n), a)
+                plot_crystal_pyvista(generate_bcc(a, n), radius_bcc(a), colors_bcc(generate_bcc(a, n), a))
             else:
                 print("Abgebrochen.")
     else: print ("Programmabbruch")
