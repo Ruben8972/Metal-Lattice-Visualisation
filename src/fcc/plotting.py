@@ -57,14 +57,14 @@ def radius_fcc(a):
 def radius_hcp(a):
     return a/2
 
-def colors_bcc(points, a, tol=1e-5):
-    frac = (points / a) % 1.0
-    is_half = np.any(np.isclose(frac, 0.5, atol=tol), axis=1)
-    colors = np.zeros((len(points), 3), dtype=np.uint8)
-    colors[is_half]  = [255, 0, 0]   # body-center
-    colors[~is_half] = [0, 0, 255]   # corners
-    return colors
-
+def colors_bcc(points, a):
+    layer_index = np.rint(points[:, 1] / 0.5).astype(np.int32)
+    lut = np.array([
+        [0, 0, 255],
+        [255, 0, 0],
+    ], dtype=np.uint8)
+    return lut[layer_index % 2]
+    
 def colors_fcc(points, a):
     m = np.rint(points.sum(axis=1) / a).astype(np.int32)
     lut = np.array([[255, 0, 0], [0, 120, 255], [0, 200, 80]], dtype=np.uint8)
@@ -78,7 +78,6 @@ def colors_hcp(points, a):
         [0, 0, 255],
         [255, 0, 0],
     ], dtype=np.uint8)
-
     return lut[layer_index % 2]
 
 def plot_crystal_pyvista(points, r, colors):

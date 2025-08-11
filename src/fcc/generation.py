@@ -39,6 +39,9 @@ def generate_crystal(a_vecs, base, nxyz):
         )
         cells_frac = np.stack([I, J, K], axis=-1).reshape(-1, 3)
         pts_frac = (cells_frac[:, None, :] + base[None, :, :]).reshape(-1, 3)
+        lim = (nx - 1) + 1e-5
+        m = (pts_frac[:,0] <= lim) & (pts_frac[:,1] <= lim) & (pts_frac[:,2] <= lim)
+        pts_frac = pts_frac[m]
         return (pts_frac @ a_vecs).astype(np.float32)
 
 def basis_bcc_frac():
@@ -70,3 +73,41 @@ def generate_fcc(a, n):
 
 def generate_hcp(a, n):
     return generate_crystal(a_vecs_hcp(a), basis_hcp_fracs(), (n,n,n))
+
+def generate_hcp_hex(a, R, nz, c_over_a=(2*np.sqrt(6))/3):
+    a_vecs = a_vecs_hcp(np.float32(a), c_over_a=np.float32(c_over_a))
+    base   = basis_hcp_fracs()
+    R = int(R)
+    nz = int(nz)
+    if R < 0 or nz <= 0:
+        return np.empty((0, 3), dtype=np.float32)
+    q, r = np.meshgrid(
+        np.arange(-R, R + 1, dtype=np.float32),
+        np.arange(-R, R + 1, dtype=np.float32),
+        indexing="ij",
+    )
+
+    mask = (np.abs(q) <= R) & (np.abs(r) <= R) & (np.abs(q + r) <= R)
+
+    qr_pairs = np.stack([q[mask], r[mask]], axis=-1)
+    n_hex = qr_pairs.shape[0]
+
+    k_vals = np.arange(nz, dtype=np.float32)
+    qrk = np.stack([
+        np.repeat(qr_pairs[:, 0], nz),
+        np.repeat(qr_pairs[:, 1], nz),
+        np.tile(k_vals, n_hex),
+    ], axis=-1)
+
+    pts_frac = (qrk[:, None, :] + base[None, :, :]).reshape(-1, 3)
+    eps = 1e-5
+    qf = pts_frac[:, 0]
+    rf = pts_frac[:, 1]
+    kf = pts_frac[:, 2]
+    keep_hex = (np.abs(qf) <= R + eps) & (np.abs(rf) <= R + eps) & (np.abs(qf + rf) <= R + eps)
+    keep_k = (np.abs(kf) <= (nz-1)+ eps)
+    m = keep_hex & keep_k
+    pts = pts_frac[m]
+    pts = (pts @ a_vecs).astype(np.float32)
+
+    return pts
