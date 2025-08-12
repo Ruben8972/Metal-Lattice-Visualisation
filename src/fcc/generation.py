@@ -51,8 +51,14 @@ def basis_fcc_frac():
     return np.array([[0,0,0],[0.5,0.5,0],[0.5,0,0.5],[0,0.5,0.5]], dtype=np.float32)
 
 def basis_hcp_fracs():
-     return np.array([[0.0, 0.0, 0.0],
+     return np.array([[0, 0, 0],
                      [1.0/3.0, 1.0/3.0, 0.5]], dtype=np.float32)
+
+def basis_fcc_frac_plane():
+    return np.array([[0, 0, 0],
+                     [1/3, 1/3, 1/3],
+                     [2/3, 2/3, 2/3]], dtype=np.float32
+                    )
 
 def a_vecs_cubic(a):
     a = np.float32(a)
@@ -74,9 +80,8 @@ def generate_fcc(a, n):
 def generate_hcp(a, n):
     return generate_crystal(a_vecs_hcp(a), basis_hcp_fracs(), (n,n,n))
 
-def generate_hcp_hex(a, R, nz, c_over_a=(2*np.sqrt(6))/3):
+def generate_hcp_hex(a, R, nz, base, c_over_a=(2*np.sqrt(6))/3):
     a_vecs = a_vecs_hcp(np.float32(a), c_over_a=np.float32(c_over_a))
-    base   = basis_hcp_fracs()
     R = int(R)
     nz = int(nz)
     if R < 0 or nz <= 0:

@@ -1,10 +1,11 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
-from fcc.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc, radius_hcp, colors_hcp
-from fcc.generation import generate_fcc, generate_bcc, generate_hcp, generate_hcp_hex
+from fcc.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc, colors_fcc_planes, radius_hcp, colors_hcp
+from fcc.generation import generate_fcc, basis_fcc_frac_plane, generate_bcc, generate_hcp, generate_hcp_hex, basis_hcp_fracs
 
 GITTER = {
     "fcc": {"generate": generate_fcc, "radius": radius_fcc, "colors": colors_fcc},
+    "fcc_planes": {"generate": generate_hcp_hex, "radius": radius_fcc, "colors": colors_fcc_planes},
     "bcc": {"generate": generate_bcc, "radius": radius_bcc, "colors": colors_bcc},
     "hcp": {"generate": generate_hcp, "radius": radius_hcp, "colors": colors_hcp},
     "hcp_hex": {"generate": generate_hcp_hex, "radius": radius_hcp, "colors": colors_hcp}
@@ -58,6 +59,21 @@ def ask_and_plot(kind: str, fns: dict) -> None:
         elif not auswahl:
             root.destroy()
             return
+    
+    elif kind == "fcc":
+        auswahl = custom_dialog(
+            parent = root, 
+            title = "FCC Auswahl",
+            message = "Bitte wählen Sie die Plotvariante",
+            button1_text = "Ebenen",
+            button2_text = "Einheitszelle"
+            )
+        if auswahl == "Ebenen":
+            kind = "fcc_planes"
+            fns = GITTER.get("fcc_planes")
+        elif not auswahl:
+            root.destroy()
+            return
 
     plot_unit = messagebox.askyesnocancel(
         parent=root,
@@ -93,7 +109,13 @@ def ask_and_plot(kind: str, fns: dict) -> None:
         if kind == "hcp_hex":
             R = 1
             nz = 2
-            pts = fns["generate"](a, R, nz)
+            base = basis_hcp_fracs
+            pts = fns["generate"](a, R, nz, base)
+        elif kind == "fcc_planes":
+            R = 1
+            nz = 2
+            base = basis_fcc_frac_plane()
+            pts = fns["generate"](a, R, nz, base)
         else:
             pts = fns["generate"](a, 2)
 
@@ -108,11 +130,17 @@ def ask_and_plot(kind: str, fns: dict) -> None:
             root.destroy()
             print("Abgebrochen.")
             return
-        
+
         if kind == "hcp_hex":
             R = n
             nz = n+1
-            pts = fns["generate"](a, R, nz)
+            base = basis_hcp_fracs()
+            pts = fns["generate"](a, R, nz, base)
+        elif kind == "fcc_planes":
+            R = n
+            nz = n + 1
+            base = basis_fcc_frac_plane()
+            pts = fns["generate"](a, R, nz, base)
         else:
             pts = fns["generate"](a, n)
     

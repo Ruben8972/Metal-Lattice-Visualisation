@@ -54,6 +54,9 @@ def radius_bcc(a):
 def radius_fcc(a):
     return (np.sqrt(2) / 4) * a
 
+def radius_fcc_planes(a):
+    return (np.sqrt(2) / 6) * a
+
 def radius_hcp(a):
     return a/2
 
@@ -69,6 +72,12 @@ def colors_fcc(points, a):
     m = np.rint(points.sum(axis=1) / a).astype(np.int32)
     lut = np.array([[255, 0, 0], [0, 120, 255], [0, 200, 80]], dtype=np.uint8)
     return lut[m % 3]
+
+def colors_fcc_planes(points, a):
+    layer_height = (2*np.sqrt(6)/3) * a / 3
+    layer_index = np.rint(points[:, 1] / layer_height).astype(np.int32)
+    lut = np.array([[255, 0, 0], [0, 120, 255], [0, 200, 80]], dtype=np.uint8)
+    return lut[layer_index % 3]
 
 def colors_hcp(points, a):
   
