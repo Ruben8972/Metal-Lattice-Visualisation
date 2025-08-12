@@ -71,6 +71,13 @@ def a_vecs_hcp(a, c_over_a=(2*np.sqrt(6))/3):
                      [0.5 * a, 0.0, np.float32(np.sqrt(3)/2) * a],
                      [0.0, c, 0.0]], dtype=np.float32)
 
+def a_vecs_fcc_planes(a):
+    c = np.sqrt(3)
+    a = (np.sqrt(2) / 2) * a
+    return np.array([[a, 0.0, 0.0],
+                     [0.5 * a, 0.0, np.sqrt(3)/2 * a],
+                     [0.0, c, 0.0]], dtype=np.float32)
+
 def generate_bcc(a, n):
     return generate_crystal(a_vecs_cubic(a), basis_bcc_frac(), (n,n,n))
 
@@ -80,8 +87,8 @@ def generate_fcc(a, n):
 def generate_hcp(a, n):
     return generate_crystal(a_vecs_hcp(a), basis_hcp_fracs(), (n,n,n))
 
-def generate_hcp_hex(a, R, nz, base, c_over_a=(2*np.sqrt(6))/3):
-    a_vecs = a_vecs_hcp(np.float32(a), c_over_a=np.float32(c_over_a))
+def generate_hcp_hex(a, R, nz, base, a_vecs):
+    a_vecs = a_vecs(np.float32(a))
     R = int(R)
     nz = int(nz)
     if R < 0 or nz <= 0:
@@ -105,14 +112,15 @@ def generate_hcp_hex(a, R, nz, base, c_over_a=(2*np.sqrt(6))/3):
     ], axis=-1)
 
     pts_frac = (qrk[:, None, :] + base[None, :, :]).reshape(-1, 3)
-    eps = 1e-5
-    qf = pts_frac[:, 0]
-    rf = pts_frac[:, 1]
-    kf = pts_frac[:, 2]
-    keep_hex = (np.abs(qf) <= R + eps) & (np.abs(rf) <= R + eps) & (np.abs(qf + rf) <= R + eps)
-    keep_k = (np.abs(kf) <= (nz-1)+ eps)
-    m = keep_hex & keep_k
-    pts = pts_frac[m]
-    pts = (pts @ a_vecs).astype(np.float32)
+    if isinstance(base, np.ndarray) and np.array_equal(base, basis_hcp_fracs()):
+        eps = 1e-5
+        qf = pts_frac[:, 0]
+        rf = pts_frac[:, 1]
+        kf = pts_frac[:, 2]
+        keep_hex = (np.abs(qf) <= R + eps) & (np.abs(rf) <= R + eps) & (np.abs(qf + rf) <= R + eps)
+        keep_k = (np.abs(kf) <= (nz-1)+ eps)
+        m = keep_hex & keep_k
+        pts_frac = pts_frac[m]
+    pts = (pts_frac @ a_vecs).astype(np.float32)
 
     return pts

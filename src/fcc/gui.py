@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 from fcc.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc, colors_fcc_planes, radius_hcp, colors_hcp
-from fcc.generation import generate_fcc, basis_fcc_frac_plane, generate_bcc, generate_hcp, generate_hcp_hex, basis_hcp_fracs
+from fcc.generation import generate_fcc, basis_fcc_frac_plane, a_vecs_fcc_planes, generate_bcc, generate_hcp, generate_hcp_hex, basis_hcp_fracs, a_vecs_hcp
 
 GITTER = {
     "fcc": {"generate": generate_fcc, "radius": radius_fcc, "colors": colors_fcc},
@@ -44,6 +44,9 @@ def custom_dialog(parent, title, message, button1_text, button2_text):
 def ask_and_plot(kind: str, fns: dict) -> None:
     root = tk.Tk()
     root.withdraw()
+
+    def hexgen(a, R, nz, base, a_vecs):
+        return generate_hcp_hex(a, R, nz, base, a_vecs)
 
     if kind == "hcp":
         auswahl = custom_dialog(
@@ -107,15 +110,10 @@ def ask_and_plot(kind: str, fns: dict) -> None:
             return
         
         if kind == "hcp_hex":
-            R = 1
-            nz = 2
-            base = basis_hcp_fracs
-            pts = fns["generate"](a, R, nz, base)
+            pts = hexgen(a, 1, 2, basis_hcp_fracs(), a_vecs_hcp)
         elif kind == "fcc_planes":
-            R = 1
-            nz = 2
-            base = basis_fcc_frac_plane()
-            pts = fns["generate"](a, R, nz, base)
+            fns = GITTER.get("fcc")
+            pts = fns["generate"](a, 2)
         else:
             pts = fns["generate"](a, 2)
 
@@ -132,15 +130,9 @@ def ask_and_plot(kind: str, fns: dict) -> None:
             return
 
         if kind == "hcp_hex":
-            R = n
-            nz = n+1
-            base = basis_hcp_fracs()
-            pts = fns["generate"](a, R, nz, base)
+            pts = hexgen(a, n, n + 1, basis_hcp_fracs(), a_vecs_hcp)
         elif kind == "fcc_planes":
-            R = n
-            nz = n + 1
-            base = basis_fcc_frac_plane()
-            pts = fns["generate"](a, R, nz, base)
+            pts = hexgen(a, n, n + 1, basis_fcc_frac_plane(), a_vecs_fcc_planes)
         else:
             pts = fns["generate"](a, n)
     
