@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
-from fcc.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc, colors_fcc_planes, radius_hcp, colors_hcp
-from fcc.generation import generate_fcc, basis_fcc_frac_plane, a_vecs_fcc_planes, generate_bcc, generate_hcp, generate_hcp_hex, basis_hcp_fracs, a_vecs_hcp
+from vis.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc, colors_fcc_planes, radius_hcp, colors_hcp
+from vis.generation import generate_fcc, basis_fcc_frac_plane, a_vecs_fcc_planes, generate_bcc, generate_hcp, generate_hcp_hex, basis_hcp_fracs, a_vecs_hcp
 
 GITTER = {
     "fcc": {"generate": generate_fcc, "radius": radius_fcc, "colors": colors_fcc},
@@ -99,15 +99,15 @@ def ask_and_plot(kind: str, fns: dict) -> None:
         return
     
     if plot_unit:
-        clipped = messagebox.askyesno(
-            parent=root,
-            title="Einheitszelle-Typ",
-            message="Möchten Sie die Einheitszelle geclippt anzeigen?",
-        )
-        if clipped:
-            messagebox.showinfo(kind.upper(), f"Clipped Einheitszelle für {kind.upper()} ist noch nicht implementiert.")
-            root.destroy()
-            return
+        # clipped = messagebox.askyesno(
+        #     parent=root,
+        #     title="Einheitszelle-Typ",
+        #     message="Möchten Sie die Einheitszelle geclippt anzeigen?",
+        # )
+        # if clipped:
+        #     messagebox.showinfo(kind.upper(), f"Clipped Einheitszelle für {kind.upper()} ist noch nicht implementiert.")
+        #     root.destroy()
+        #     return
         
         if kind == "hcp_hex":
             pts = hexgen(a, 1, 2, basis_hcp_fracs(), a_vecs_hcp)

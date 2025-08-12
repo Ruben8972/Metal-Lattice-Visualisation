@@ -1,6 +1,6 @@
 import pyvista as pv
 import numpy as np
-from fcc.generation import generate_fcc, generate_bcc
+from vis.generation import generate_fcc, generate_bcc
 
 # def plot_clipped_ez(a: float):
 
