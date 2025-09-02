@@ -1,8 +1,22 @@
+"""
+gui.py
+======
+
+Einfache Tkinter-GUI zur Auswahl und Visualisierung von Kristallgittern.
+Erlaubt die Auswahl von Gittertyp, Einheitszelle/Superzelle und Gitterkonstanten.
+Die Visualisierung erfolgt interaktiv mit PyVista.
+
+Beispiele
+---------
+>>> run_gui()
+# Öffnet ein Fenster zur Auswahl und startet die Visualisierung.
+"""
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 from vis.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc, colors_fcc_planes, radius_hcp, colors_hcp
 from vis.generation import generate_fcc, basis_fcc_frac_plane, a_vecs_fcc_planes, generate_bcc, generate_hcp, generate_hcp_hex, basis_hcp_fracs, a_vecs_hcp
 
+# Dictionary zur Zuordnung von Gittertypen zu ihren Eigenschaften
 GITTER = {
     "fcc": {"generate": generate_fcc, "radius": radius_fcc, "colors": colors_fcc},
     "fcc_planes": {"generate": generate_hcp_hex, "radius": radius_fcc, "colors": colors_fcc_planes},
@@ -11,7 +25,13 @@ GITTER = {
     "hcp_hex": {"generate": generate_hcp_hex, "radius": radius_hcp, "colors": colors_hcp}
 }
 
-def center_window(window, width=250, height=180):
+def center_window(window: tk.Tk, width: int = 250, height: int = 180) -> None:
+    """
+    Returns
+    -------
+    None
+        Zentriert das angegebene Fenster ohne Flimmern auf dem Bildschirm.
+    """
     window.withdraw()
     window.update_idletasks()
     screen_width = window.winfo_screenwidth()
@@ -21,7 +41,13 @@ def center_window(window, width=250, height=180):
     window.geometry(f"{width}x{height}+{x}+{y}")
     window.deiconify()
 
-def custom_dialog(parent, title, message, button1_text, button2_text):
+def custom_dialog(parent: tk.Tk, title: str, message: str, button1_text: str, button2_text: str) -> str:
+    """
+    Returns
+    -------
+    str
+        Text des gedrückten Buttons.
+    """
     dialog = tk.Toplevel()
     center_window(dialog, 300, 150)
     dialog.title(title)
@@ -42,6 +68,12 @@ def custom_dialog(parent, title, message, button1_text, button2_text):
     return result.get()
 
 def ask_and_plot(kind: str, fns: dict) -> None:
+    """
+    Returns
+    -------
+    None
+        Fragt die nötigen Parameter ab und startet die Visualisierung.
+    """
     root = tk.Tk()
     root.withdraw()
 
@@ -143,7 +175,12 @@ def ask_and_plot(kind: str, fns: dict) -> None:
     root.destroy()
 
 def run_gui() -> None:
-    
+    """
+    Returns
+    -------
+    None
+        Startet die GUI zur Auswahl und Visualisierung eines Gitters.
+    """
     selection = {}
 
     def set_choice(typ: str) -> None:
