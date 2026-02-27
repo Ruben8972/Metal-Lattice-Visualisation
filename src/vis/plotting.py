@@ -50,7 +50,7 @@ def colors_bcc(points: np.ndarray, a: float) -> np.ndarray:
     np.ndarray of shape (N, 3)
         RGB-Farben für jeden Punkt (BCC, abwechselnd pro Schicht).
     """
-    layer_index = np.rint(points[:, 1] / 0.5).astype(np.int32)
+    layer_index = np.rint(points[:, 1] / (0.5 * a)).astype(np.int32)
     lut = np.array([
         [0, 0, 255],
         [255, 0, 0],

@@ -77,9 +77,6 @@ def ask_and_plot(kind: str, fns: dict) -> None:
     root = tk.Tk()
     root.withdraw()
 
-    def hexgen(a, R, nz, base, a_vecs):
-        return generate_hcp_hex(a, R, nz, base, a_vecs)
-
     if kind == "hcp":
         auswahl = custom_dialog(
             parent=root,
@@ -131,18 +128,8 @@ def ask_and_plot(kind: str, fns: dict) -> None:
         return
     
     if plot_unit:
-        # clipped = messagebox.askyesno(
-        #     parent=root,
-        #     title="Einheitszelle-Typ",
-        #     message="Möchten Sie die Einheitszelle geclippt anzeigen?",
-        # )
-        # if clipped:
-        #     messagebox.showinfo(kind.upper(), f"Clipped Einheitszelle für {kind.upper()} ist noch nicht implementiert.")
-        #     root.destroy()
-        #     return
-        
         if kind == "hcp_hex":
-            pts = hexgen(a, 1, 2, basis_hcp_fracs(), a_vecs_hcp)
+            pts = generate_hcp_hex(a, 1, 2, basis_hcp_fracs(), a_vecs_hcp)
         elif kind == "fcc_planes":
             fns = GITTER.get("fcc")
             pts = fns["generate"](a, 2)
@@ -162,9 +149,9 @@ def ask_and_plot(kind: str, fns: dict) -> None:
             return
 
         if kind == "hcp_hex":
-            pts = hexgen(a, n, n + 1, basis_hcp_fracs(), a_vecs_hcp)
+            pts = generate_hcp_hex(a, n, n + 1, basis_hcp_fracs(), a_vecs_hcp)
         elif kind == "fcc_planes":
-            pts = hexgen(a, n, n + 1, basis_fcc_frac_plane(), a_vecs_fcc_planes)
+            pts = generate_hcp_hex(a, n, n + 1, basis_fcc_frac_plane(), a_vecs_fcc_planes)
         else:
             pts = fns["generate"](a, n)
     
