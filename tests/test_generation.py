@@ -61,6 +61,12 @@ def test_generate_hcp_hex_applies_height_filter_for_any_base():
     assert np.allclose(pts[:, 1], 0.0, atol=1e-5)
 
 
+def test_generate_hcp_hex_optional_boundary_clip_keeps_more_fcc_plane_points():
+    clipped = generate_hcp_hex(1.0, 2, 3, basis_fcc_frac_plane(), a_vecs_fcc_planes, clip_hex_boundary=True)
+    unclipped = generate_hcp_hex(1.0, 2, 3, basis_fcc_frac_plane(), a_vecs_fcc_planes, clip_hex_boundary=False)
+    assert unclipped.shape[0] > clipped.shape[0]
+
+
 def _min_pair_distance(points: np.ndarray) -> float:
     diff = points[:, None, :] - points[None, :, :]
     dist2 = np.sum(diff * diff, axis=-1)

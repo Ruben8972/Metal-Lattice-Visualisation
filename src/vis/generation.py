@@ -71,7 +71,9 @@ def basis_hcp_fracs() -> np.ndarray:
 
 
 def basis_fcc_frac_plane() -> np.ndarray:
-    return np.array([[0, 0, 0], [1 / 3, 1 / 3, 1 / 3], [2 / 3, 2 / 3, 2 / 3]], dtype=np.float32)
+    # Equivalent FCC(111) ABC basis; using -1/3 for the third layer reduces edge
+    # truncation artifacts for finite clipped hex patches.
+    return np.array([[0, 0, 0], [1 / 3, 1 / 3, 1 / 3], [-1 / 3, -1 / 3, 2 / 3]], dtype=np.float32)
 
 
 def a_vecs_cubic(a: float) -> np.ndarray:
@@ -115,6 +117,7 @@ def generate_hcp_hex(
     nz: int,
     base: np.ndarray,
     a_vecs_fn: Callable[[float], np.ndarray],
+    clip_hex_boundary: bool = True,
 ) -> np.ndarray:
     """Generate a hexagonal prism in fractional (q, r, k) space and map to Cartesian."""
     lattice_vecs = a_vecs_fn(np.float32(a))
@@ -148,8 +151,11 @@ def generate_hcp_hex(
     qf = pts_frac[:, 0]
     rf = pts_frac[:, 1]
     kf = pts_frac[:, 2]
-    keep_hex = (np.abs(qf) <= r_cells + eps) & (np.abs(rf) <= r_cells + eps) & (np.abs(qf + rf) <= r_cells + eps)
     keep_k = (kf >= -eps) & (kf <= (nz - 1) + eps)
-    pts_frac = pts_frac[keep_hex & keep_k]
+    if clip_hex_boundary:
+        keep_hex = (np.abs(qf) <= r_cells + eps) & (np.abs(rf) <= r_cells + eps) & (np.abs(qf + rf) <= r_cells + eps)
+        pts_frac = pts_frac[keep_hex & keep_k]
+    else:
+        pts_frac = pts_frac[keep_k]
 
     return (pts_frac @ lattice_vecs).astype(np.float32)
