@@ -1,37 +1,57 @@
-"""
-gui.py
-======
+"""Tkinter GUI for selecting and plotting crystal lattices."""
 
-Einfache Tkinter-GUI zur Auswahl und Visualisierung von Kristallgittern.
-Erlaubt die Auswahl von Gittertyp, Einheitszelle/Superzelle und Gitterkonstanten.
-Die Visualisierung erfolgt interaktiv mit PyVista.
-
-Beispiele
----------
->>> run_gui()
-# Öffnet ein Fenster zur Auswahl und startet die Visualisierung.
-"""
 import tkinter as tk
-from tkinter import simpledialog, messagebox
-from vis.plotting import plot_crystal_pyvista, radius_bcc, colors_bcc, radius_fcc, colors_fcc, colors_fcc_planes, radius_hcp, colors_hcp
-from vis.generation import generate_fcc, basis_fcc_frac_plane, a_vecs_fcc_planes, generate_bcc, generate_hcp, generate_hcp_hex, basis_hcp_fracs, a_vecs_hcp
+from tkinter import messagebox, simpledialog
 
-# Dictionary zur Zuordnung von Gittertypen zu ihren Eigenschaften
+from vis.generation import (
+    a_vecs_fcc_planes,
+    a_vecs_hcp,
+    basis_fcc_frac_plane,
+    basis_hcp_fracs,
+    generate_bcc,
+    generate_fcc,
+    generate_hcp,
+    generate_hcp_hex,
+)
+from vis.plotting import (
+    colors_bcc,
+    colors_fcc,
+    colors_fcc_planes,
+    colors_hcp,
+    plot_crystal_pyvista,
+    radius_bcc,
+    radius_fcc,
+    radius_hcp,
+)
+
+
+def _build_standard(generate_fn, a: float, n: int, plot_unit: bool):
+    cells = 2 if plot_unit else n
+    return generate_fn(a, cells)
+
+
+def _build_hcp_hex(a: float, n: int, plot_unit: bool):
+    r_cells = 1 if plot_unit else n
+    nz = 2 if plot_unit else n + 1
+    return generate_hcp_hex(a, r_cells, nz, basis_hcp_fracs(), a_vecs_hcp)
+
+
+def _build_fcc_planes(a: float, n: int, plot_unit: bool):
+    r_cells = 1 if plot_unit else n
+    nz = 2 if plot_unit else n + 1
+    return generate_hcp_hex(a, r_cells, nz, basis_fcc_frac_plane(), a_vecs_fcc_planes)
+
+
 GITTER = {
-    "fcc": {"generate": generate_fcc, "radius": radius_fcc, "colors": colors_fcc},
-    "fcc_planes": {"generate": generate_hcp_hex, "radius": radius_fcc, "colors": colors_fcc_planes},
-    "bcc": {"generate": generate_bcc, "radius": radius_bcc, "colors": colors_bcc},
-    "hcp": {"generate": generate_hcp, "radius": radius_hcp, "colors": colors_hcp},
-    "hcp_hex": {"generate": generate_hcp_hex, "radius": radius_hcp, "colors": colors_hcp}
+    "fcc": {"build": lambda a, n, u: _build_standard(generate_fcc, a, n, u), "radius": radius_fcc, "colors": colors_fcc},
+    "bcc": {"build": lambda a, n, u: _build_standard(generate_bcc, a, n, u), "radius": radius_bcc, "colors": colors_bcc},
+    "hcp": {"build": lambda a, n, u: _build_standard(generate_hcp, a, n, u), "radius": radius_hcp, "colors": colors_hcp},
+    "hcp_hex": {"build": _build_hcp_hex, "radius": radius_hcp, "colors": colors_hcp},
+    "fcc_planes": {"build": _build_fcc_planes, "radius": radius_fcc, "colors": colors_fcc_planes},
 }
 
+
 def center_window(window: tk.Tk, width: int = 250, height: int = 180) -> None:
-    """
-    Returns
-    -------
-    None
-        Zentriert das angegebene Fenster ohne Flimmern auf dem Bildschirm.
-    """
     window.withdraw()
     window.update_idletasks()
     screen_width = window.winfo_screenwidth()
@@ -41,76 +61,73 @@ def center_window(window: tk.Tk, width: int = 250, height: int = 180) -> None:
     window.geometry(f"{width}x{height}+{x}+{y}")
     window.deiconify()
 
+
 def custom_dialog(parent: tk.Tk, title: str, message: str, button1_text: str, button2_text: str) -> str:
-    """
-    Returns
-    -------
-    str
-        Text des gedrückten Buttons.
-    """
-    dialog = tk.Toplevel()
-    center_window(dialog, 300, 150)
+    dialog = tk.Toplevel(parent)
+    center_window(dialog, 320, 150)
     dialog.title(title)
     dialog.resizable(False, False)
     dialog.grab_set()
-    tk.Label(dialog, text=message, padx=20, pady=10).pack()
-    result = tk.StringVar()
+    dialog.transient()
+    dialog.lift()
+    dialog.focus_force()
 
-    def set_result(value):
+    tk.Label(dialog, text=message, padx=20, pady=10).pack()
+    result = tk.StringVar(value="")
+
+    def set_result(value: str) -> None:
         result.set(value)
         dialog.destroy()
-    
+
     frame = tk.Frame(dialog)
     frame.pack(pady=10)
-    tk.Button(frame, text=button1_text, width=10, command=lambda: set_result(button1_text)).pack(side="left", padx=5)
-    tk.Button(frame, text=button2_text, width=10, command=lambda: set_result(button2_text)).pack(side="left", padx=5)
+    tk.Button(frame, text=button1_text, width=12, command=lambda: set_result(button1_text)).pack(side="left", padx=5)
+    tk.Button(frame, text=button2_text, width=12, command=lambda: set_result(button2_text)).pack(side="left", padx=5)
     dialog.wait_window()
     return result.get()
 
-def ask_and_plot(kind: str, fns: dict) -> None:
-    """
-    Returns
-    -------
-    None
-        Fragt die nötigen Parameter ab und startet die Visualisierung.
-    """
+
+def resolve_kind(root: tk.Tk, kind: str) -> str | None:
+    if kind == "hcp":
+        selection = custom_dialog(
+            parent=root,
+            title="HCP Auswahl",
+            message="Bitte waehlen Sie den Zelltyp:",
+            button1_text="Primitiv",
+            button2_text="Sechseckig",
+        )
+        if selection == "Sechseckig":
+            return "hcp_hex"
+        return "hcp" if selection else None
+
+    if kind == "fcc":
+        selection = custom_dialog(
+            parent=root,
+            title="FCC Auswahl",
+            message="Bitte waehlen Sie die Darstellung:",
+            button1_text="Ebenen",
+            button2_text="Einheitszelle",
+        )
+        if selection == "Ebenen":
+            return "fcc_planes"
+        return "fcc" if selection else None
+
+    return kind
+
+
+def ask_and_plot(kind: str) -> None:
     root = tk.Tk()
     root.withdraw()
 
-    if kind == "hcp":
-        auswahl = custom_dialog(
-            parent=root,
-            title="HCP Auswahl",
-            message="Bitte Wählen sie den Einheitszellentyp",
-            button1_text="Primitiv",
-            button2_text="Sechseckig"
-        )
-        if auswahl == "Sechseckig":
-            kind = "hcp_hex"
-            fns = GITTER.get("hcp_hex")
-        elif not auswahl:
-            root.destroy()
-            return
-    
-    elif kind == "fcc":
-        auswahl = custom_dialog(
-            parent = root, 
-            title = "FCC Auswahl",
-            message = "Bitte wählen Sie die Plotvariante",
-            button1_text = "Ebenen",
-            button2_text = "Einheitszelle"
-            )
-        if auswahl == "Ebenen":
-            kind = "fcc_planes"
-            fns = GITTER.get("fcc_planes")
-        elif not auswahl:
-            root.destroy()
-            return
+    resolved_kind = resolve_kind(root, kind)
+    if not resolved_kind:
+        root.destroy()
+        return
 
     plot_unit = messagebox.askyesnocancel(
         parent=root,
-        title="Einheitszelle?",
-        message="Möchten Sie nur eine Einheitszelle plotten?",
+        title="Einheitszelle",
+        message="Moechten Sie nur eine Einheitszelle plotten?",
     )
     if plot_unit is None:
         root.destroy()
@@ -118,84 +135,56 @@ def ask_and_plot(kind: str, fns: dict) -> None:
 
     a = simpledialog.askfloat(
         "Gitterkonstante",
-        "Länge der Gitterkonstante:",
+        "Laenge der Gitterkonstante:",
         parent=root,
         minvalue=0.01,
     )
     if a is None:
         root.destroy()
-        print("Abgebrochen.")
         return
-    
-    if plot_unit:
-        if kind == "hcp_hex":
-            pts = generate_hcp_hex(a, 1, 2, basis_hcp_fracs(), a_vecs_hcp)
-        elif kind == "fcc_planes":
-            fns = GITTER.get("fcc")
-            pts = fns["generate"](a, 2)
-        else:
-            pts = fns["generate"](a, 2)
 
-    else:
+    n = 1
+    if not plot_unit:
         n = simpledialog.askinteger(
-            "Atomanzahl in jede Richtung",
-            "Atomanzahl in jede Richtung:",
+            "Atomanzahl je Richtung",
+            "Atomanzahl je Richtung:",
             parent=root,
             minvalue=1,
         )
         if n is None:
             root.destroy()
-            print("Abgebrochen.")
             return
 
-        if kind == "hcp_hex":
-            pts = generate_hcp_hex(a, n, n + 1, basis_hcp_fracs(), a_vecs_hcp)
-        elif kind == "fcc_planes":
-            pts = generate_hcp_hex(a, n, n + 1, basis_fcc_frac_plane(), a_vecs_fcc_planes)
-        else:
-            pts = fns["generate"](a, n)
-    
+    fns = GITTER.get(resolved_kind)
+    if fns is None:
+        messagebox.showinfo(resolved_kind.upper(), f"{resolved_kind.upper()} ist nicht implementiert.")
+        root.destroy()
+        return
+
+    pts = fns["build"](a, n, plot_unit)
     r = fns["radius"](a)
     cols = fns["colors"](pts, a)
     plot_crystal_pyvista(pts, r, cols)
 
     root.destroy()
 
+
 def run_gui() -> None:
-    """
-    Returns
-    -------
-    None
-        Startet die GUI zur Auswahl und Visualisierung eines Gitters.
-    """
     selection = {}
 
-    def set_choice(typ: str) -> None:
-        selection["typ"] = typ
+    def set_choice(kind: str) -> None:
+        selection["kind"] = kind
         win.destroy()
-    
-    win = tk.Tk()
-    win.title("Gitter auswählen")
-    center_window(win, 260, 220)
 
-    tk.Label(win, text="Welches Gitter wollen Sie erstellen?").pack(pady=10)
+    win = tk.Tk()
+    win.title("Gitter auswaehlen")
+    center_window(win, 280, 220)
+
+    tk.Label(win, text="Welches Gitter moechten Sie erstellen?").pack(pady=10)
     for name in ["fcc", "bcc", "hcp"]:
-        btn = tk.Button(win, 
-                text=name.upper(), 
-                width=12, 
-                command=lambda t=name: set_choice(t)
-                )
-        btn.pack(pady=5)
+        tk.Button(win, text=name.upper(), width=14, command=lambda k=name: set_choice(k)).pack(pady=5)
     win.mainloop()
 
-    kind = selection.get("typ")
-    if not kind:
-        print("Programmabbruch")
-        return
-
-    fns = GITTER.get(kind)
-    if fns is None:
-        messagebox.showinfo(kind.upper(), f"{kind.upper()} ist noch nicht implementiert.")
-        return
-
-    ask_and_plot(kind, fns)
+    kind = selection.get("kind")
+    if kind:
+        ask_and_plot(kind)
