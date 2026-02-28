@@ -1,11 +1,14 @@
 """Interactive PyVista viewer with in-window controls for lattice parameters."""
 
 from dataclasses import dataclass
+import logging
+import math
 import tkinter as tk
 from tkinter import simpledialog
 
 import numpy as np
 import pyvista as pv
+from pyvista import _vtk
 
 from vis.generation import (
     a_vecs_fcc_planes,
@@ -17,9 +20,14 @@ from vis.generation import (
     generate_hcp,
     generate_hcp_hex,
 )
-from vis.plotting import auto_resolution, colors_bcc, colors_fcc, colors_fcc_planes, colors_hcp, radius_bcc, radius_fcc, radius_hcp
+from vis.plotting import colors_bcc, colors_fcc, colors_fcc_planes, colors_hcp, radius_bcc, radius_fcc, radius_hcp
 
 LATTICE_KINDS = ("bcc", "fcc", "hcp", "hcp_hex", "fcc_planes")
+MANUAL_MIN_RES = 3
+MANUAL_MAX_RES = 100
+_TEXTURE_WARN_NEEDLE = "No scalar values found for texture input"
+_VTK_FILTER_INSTALLED = False
+_LOG_FILTER_INSTALLED = False
 
 
 @dataclass
@@ -28,7 +36,78 @@ class ViewerState:
     a: float = 1.0
     n: int = 2
     sphere_res: int = 24
+    manual_res: bool = False
     unit_cell: bool = False
+
+
+def _auto_resolution_from_atom_count(num_atoms: int) -> int:
+    """Compute sphere resolution from atom count using a smooth triangle-budget formula."""
+    if num_atoms <= 0:
+        return MANUAL_MIN_RES
+
+    # Dynamic global triangle budget:
+    # - high detail for small models
+    # - smooth decay with increasing atom count (less aggressive downsizing)
+    # - no hard atom-count thresholds
+    total_target_tris = 400_000.0 + 20_000_000.0 / (1.0 + (num_atoms / 3_000.0) ** 0.8)
+    tris_per_sphere = max(8.0, total_target_tris / float(num_atoms))
+
+    # For pyvista Sphere, cell count scales roughly with:
+    # tris ~= 2 * res * (res - 2)
+    # Invert this to estimate a resolution from tris_per_sphere.
+    res = 1.0 + math.sqrt(1.0 + 0.5 * tris_per_sphere)
+    res = int(round(res))
+    return max(MANUAL_MIN_RES, min(MANUAL_MAX_RES, res))
+
+
+def _display_kind_name(kind: str) -> str:
+    return kind.upper().replace("_", " ")
+
+
+class _VtkTextureMessageFilter(_vtk.vtkOutputWindow):
+    """Filter known non-fatal VTK texture spam while keeping other messages."""
+
+    def _is_filtered(self, txt: object) -> bool:
+        text = str(txt)
+        return _TEXTURE_WARN_NEEDLE in text
+
+    def DisplayText(self, txt: object) -> None:  # noqa: N802
+        if not self._is_filtered(txt):
+            super().DisplayText(txt)
+
+    def DisplayWarningText(self, txt: object) -> None:  # noqa: N802
+        if not self._is_filtered(txt):
+            super().DisplayWarningText(txt)
+
+    def DisplayErrorText(self, txt: object) -> None:  # noqa: N802
+        if not self._is_filtered(txt):
+            super().DisplayErrorText(txt)
+
+    def DisplayGenericWarningText(self, txt: object) -> None:  # noqa: N802
+        if not self._is_filtered(txt):
+            super().DisplayGenericWarningText(txt)
+
+
+class _PyLoggingTextureFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return _TEXTURE_WARN_NEEDLE not in msg
+
+
+def _install_texture_message_filters() -> None:
+    global _VTK_FILTER_INSTALLED, _LOG_FILTER_INSTALLED
+
+    if not _VTK_FILTER_INSTALLED:
+        try:
+            _vtk.vtkOutputWindow.SetInstance(_VtkTextureMessageFilter())
+            _VTK_FILTER_INSTALLED = True
+        except Exception:
+            # Fallback: keep default output behavior if VTK filter cannot be installed.
+            pass
+
+    if not _LOG_FILTER_INSTALLED:
+        logging.getLogger().addFilter(_PyLoggingTextureFilter())
+        _LOG_FILTER_INSTALLED = True
 
 
 def _build_lattice(state: ViewerState) -> tuple[np.ndarray, float, np.ndarray]:
@@ -78,46 +157,80 @@ def _build_lattice(state: ViewerState) -> tuple[np.ndarray, float, np.ndarray]:
 
 
 def run_interactive_viewer() -> None:
+    _install_texture_message_filters()
     state = ViewerState()
+    a_slider = None
+    res_slider = None
+    syncing_res_slider = False
+    initializing_controls = True
+    initial_pts = _build_lattice(state)[0]
+    state.sphere_res = _auto_resolution_from_atom_count(len(initial_pts))
 
     plotter = pv.Plotter()
     plotter.disable_stereo_render()
+    if plotter.ren_win is not None:
+        # Explicitly disable stereo-capable mode on the native VTK window.
+        # Some drivers still emit CrystalEyes warnings during redraw otherwise.
+        try:
+            plotter.ren_win.StereoCapableWindowOff()
+        except Exception:
+            pass
+        try:
+            plotter.ren_win.StereoRenderOff()
+        except Exception:
+            pass
     status_name = "status_text"
-    n_info_name = "n_info_text"
     kind_label_names = tuple(f"kind_label_{k}" for k in LATTICE_KINDS)
     panel_text_names = ("lattice_panel_title", "unit_cell_label", *kind_label_names)
-    layout_state = {"size": None, "updating": False, "n_info_y": 520}
+    layout_state = {"size": None, "updating": False}
 
-    def redraw() -> None:
+    def redraw(reset_camera: bool = False) -> None:
+        nonlocal res_slider, syncing_res_slider
         pts, radius, colors = _build_lattice(state)
+        if not state.manual_res:
+            # Auto mode follows a smooth atom-count decay curve.
+            state.sphere_res = _auto_resolution_from_atom_count(len(pts))
+            if res_slider is not None:
+                current_value = int(round(float(res_slider.GetRepresentation().GetValue())))
+                if current_value != state.sphere_res:
+                    syncing_res_slider = True
+                    res_slider.GetRepresentation().SetValue(state.sphere_res)
+                    syncing_res_slider = False
         sphere = pv.Sphere(radius=radius, theta_resolution=state.sphere_res, phi_resolution=state.sphere_res)
         cloud = pv.PolyData(pts)
         glyphs = cloud.glyph(geom=sphere, scale=False, orient=False)
         glyphs["colors"] = np.repeat(colors, sphere.n_points, axis=0)
 
-        plotter.remove_actor("lattice")
-        plotter.add_mesh(glyphs, scalars="colors", rgb=True, name="lattice", reset_camera=False)
+        plotter.add_mesh(glyphs, scalars="colors", rgb=True, name="lattice", reset_camera=reset_camera)
 
-        plotter.remove_actor(status_name)
         plotter.add_text(
             (
-                f"kind={state.kind} | a={state.a:.2f} | n={state.n} | "
-                f"res={state.sphere_res} | unit_cell={state.unit_cell} | atoms={len(pts)}"
+                f"kind={_display_kind_name(state.kind)} | a={state.a:.2f} | n={state.n} | "
+                f"res={state.sphere_res} ({'manual' if state.manual_res else 'auto'}) | "
+                f"unit_cell={state.unit_cell} | atoms={len(pts)}\n"
+                "4-8: choose lattice type\n"
+                "N: edit atom count\n"
+                "R: enable auto-resolution\n"
+                "U: toggle unit cell\n"
+                "A: reset lattice constant"
             ),
             position="upper_right",
             font_size=10,
             color="black",
             name=status_name,
         )
-
-        plotter.remove_actor(n_info_name)
-        plotter.add_text(
-            f"Atom count n: {state.n} (N to edit)",
-            position=(20, layout_state["n_info_y"]),
-            font_size=10,
-            color="black",
-            name=n_info_name,
-        )
+        if reset_camera:
+            # Keep a consistent outside view after topology changes (n/kind/unit-cell).
+            plotter.reset_camera()
+            try:
+                plotter.camera.zoom(0.9)
+            except Exception:
+                pass
+        if plotter.ren_win is not None:
+            try:
+                plotter.ren_win.StereoRenderOff()
+            except Exception:
+                pass
         plotter.render()
 
     def on_a_change(value: float) -> None:
@@ -125,16 +238,23 @@ def run_interactive_viewer() -> None:
         redraw()
 
     def on_res_change(value: float) -> None:
-        state.sphere_res = max(8, int(round(value)))
+        nonlocal syncing_res_slider
+        if not syncing_res_slider and not initializing_controls:
+            state.manual_res = True
+        state.sphere_res = max(MANUAL_MIN_RES, int(round(value)))
         redraw()
 
     def on_kind_change(kind: str) -> None:
         state.kind = kind
-        redraw()
+        redraw(reset_camera=True)
 
     def on_unit_toggle(value: bool) -> None:
         state.unit_cell = bool(value)
-        redraw()
+        redraw(reset_camera=True)
+
+    def toggle_unit_cell() -> None:
+        state.unit_cell = not state.unit_cell
+        redraw(reset_camera=True)
 
     def ask_n_input() -> None:
         root = tk.Tk()
@@ -150,7 +270,7 @@ def run_interactive_viewer() -> None:
         root.destroy()
         if new_n is not None:
             state.n = int(new_n)
-            redraw()
+            redraw(reset_camera=True)
 
     def build_top_left_controls() -> None:
         layout_state["updating"] = True
@@ -184,7 +304,7 @@ def run_interactive_viewer() -> None:
                     size=18,
                 )
                 plotter.add_text(
-                    kind.upper(),
+                    _display_kind_name(kind),
                     position=(panel_x + 26, y + 1),
                     font_size=10,
                     color="black",
@@ -205,7 +325,6 @@ def run_interactive_viewer() -> None:
                 color="black",
                 name="unit_cell_label",
             )
-            layout_state["n_info_y"] = unit_y - 34
             layout_state["size"] = tuple(plotter.ren_win.GetSize())
         finally:
             layout_state["updating"] = False
@@ -218,7 +337,20 @@ def run_interactive_viewer() -> None:
             build_top_left_controls()
             redraw()
 
-    plotter.add_slider_widget(
+    def reset_auto_res() -> None:
+        state.manual_res = False
+        redraw()
+
+    def reset_a_value() -> None:
+        state.a = 1.0
+        if a_slider is not None:
+            try:
+                a_slider.GetRepresentation().SetValue(state.a)
+            except Exception:
+                pass
+        redraw()
+
+    a_slider = plotter.add_slider_widget(
         callback=on_a_change,
         rng=(0.2, 5.0),
         value=state.a,
@@ -228,9 +360,9 @@ def run_interactive_viewer() -> None:
         style="modern",
         interaction_event="end",
     )
-    plotter.add_slider_widget(
+    res_slider = plotter.add_slider_widget(
         callback=on_res_change,
-        rng=(8, 100),
+        rng=(MANUAL_MIN_RES, MANUAL_MAX_RES),
         value=state.sphere_res,
         title="sphere resolution",
         pointa=(0.56, 0.08),
@@ -238,12 +370,20 @@ def run_interactive_viewer() -> None:
         style="modern",
         interaction_event="end",
     )
+    initializing_controls = False
 
     plotter.add_key_event("n", ask_n_input)
     plotter.add_key_event("N", ask_n_input)
+    plotter.add_key_event("r", reset_auto_res)
+    plotter.add_key_event("R", reset_auto_res)
+    plotter.add_key_event("u", toggle_unit_cell)
+    plotter.add_key_event("U", toggle_unit_cell)
+    plotter.add_key_event("a", reset_a_value)
+    plotter.add_key_event("A", reset_a_value)
+    for idx, kind in enumerate(LATTICE_KINDS, start=4):
+        plotter.add_key_event(str(idx), lambda k=kind: on_kind_change(k))
     resize_observer = plotter.iren.add_observer("ConfigureEvent", on_resize) if plotter.iren is not None else None
 
-    state.sphere_res = auto_resolution(len(_build_lattice(state)[0]))
     build_top_left_controls()
     redraw()
     try:

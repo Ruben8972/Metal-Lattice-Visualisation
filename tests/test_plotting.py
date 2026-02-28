@@ -29,6 +29,18 @@ def test_auto_resolution_handles_zero_atoms():
     assert auto_resolution(0) == 8
 
 
+def test_auto_resolution_supports_custom_minimum():
+    assert auto_resolution(0, min_res=6, max_res=96) == 6
+
+
+def test_auto_resolution_huge_atom_count_hits_lower_bound():
+    assert auto_resolution(500_000, target_tris=60_000, min_res=3, max_res=12) == 3
+
+
+def test_auto_resolution_respects_upper_bound_for_small_models():
+    assert auto_resolution(10, target_tris=2_000_000, min_res=3, max_res=12) == 12
+
+
 def test_colors_fcc_planes_follows_plane_spacing():
     a = 2.0
     layer_height = float(a_vecs_fcc_planes(a)[2, 1]) / 3.0
