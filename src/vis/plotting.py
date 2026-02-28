@@ -45,13 +45,22 @@ def colors_hcp(points: np.ndarray, a: float) -> np.ndarray:
     return lut[layer_index % 2]
 
 
-def auto_resolution(num_atoms: int, target_tris: int = 2_000_000) -> int:
+def auto_resolution(
+    num_atoms: int,
+    target_tris: int = 2_000_000,
+    min_res: int = 8,
+    max_res: int = 100,
+) -> int:
     """Choose a sphere resolution capped to a practical range."""
+    min_res = int(min_res)
+    max_res = int(max_res)
+    if min_res > max_res:
+        min_res, max_res = max_res, min_res
     if num_atoms <= 0:
-        return 8
+        return min_res
     tris_per_sphere = target_tris / num_atoms
     res = int(np.sqrt(tris_per_sphere / 2))
-    return max(8, min(100, res))
+    return max(min_res, min(max_res, res))
 
 
 def plot_crystal_pyvista(points: np.ndarray, r: float, colors: np.ndarray) -> None:
