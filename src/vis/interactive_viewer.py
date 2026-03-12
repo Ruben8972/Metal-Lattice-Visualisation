@@ -23,7 +23,7 @@ from vis.generation import (
 from vis.plotting import colors_bcc, colors_fcc, colors_fcc_planes, colors_hcp, radius_bcc, radius_fcc, radius_hcp
 
 LATTICE_KINDS = ("bcc", "fcc", "hcp", "hcp_hex", "fcc_planes")
-MANUAL_MIN_RES = 3
+MANUAL_MIN_RES = 5
 MANUAL_MAX_RES = 100
 _TEXTURE_WARN_NEEDLE = "No scalar values found for texture input"
 _VTK_FILTER_INSTALLED = False
@@ -159,10 +159,6 @@ def _build_lattice(state: ViewerState) -> tuple[np.ndarray, float, np.ndarray]:
 def run_interactive_viewer() -> None:
     _install_texture_message_filters()
     state = ViewerState()
-    a_slider = None
-    res_slider = None
-    syncing_res_slider = False
-    initializing_controls = True
     initial_pts = _build_lattice(state)[0]
     state.sphere_res = _auto_resolution_from_atom_count(len(initial_pts))
 
@@ -179,8 +175,7 @@ def run_interactive_viewer() -> None:
             plotter.ren_win.StereoRenderOff()
         except Exception:
             pass
-    status_name = "status_text"
-    hint_name_prefix = "hint_text_"
+    status_name_prefix = "status_text_"
     left_panel_name = "left_panel_text"
     layout_state = {"size": None, "updating": False}
 
@@ -198,17 +193,10 @@ def run_interactive_viewer() -> None:
         return size
 
     def redraw(reset_camera: bool = False) -> None:
-        nonlocal res_slider, syncing_res_slider
         pts, radius, colors = _build_lattice(state)
         if not state.manual_res:
             # Auto mode follows a smooth atom-count decay curve.
             state.sphere_res = _auto_resolution_from_atom_count(len(pts))
-            if res_slider is not None:
-                current_value = int(round(float(res_slider.GetRepresentation().GetValue())))
-                if current_value != state.sphere_res:
-                    syncing_res_slider = True
-                    res_slider.GetRepresentation().SetValue(state.sphere_res)
-                    syncing_res_slider = False
         sphere = pv.Sphere(radius=radius, theta_resolution=state.sphere_res, phi_resolution=state.sphere_res)
         cloud = pv.PolyData(pts)
         glyphs = cloud.glyph(geom=sphere, scale=False, orient=False)
@@ -238,51 +226,36 @@ def run_interactive_viewer() -> None:
         except Exception:
             pass
 
-        top_y = 0.98
-        status_line = (
-            f"a={state.a:.2f} | n={state.n} | "
-            f"atoms={len(pts)} | res={state.sphere_res} ({'manual' if state.manual_res else 'auto'})"
-        )
-        status_font = fit_font_size([status_line], preferred=11, minimum=7, max_width_px=int(win_w * 0.62))
-        status_actor = plotter.add_text(
-            status_line,
-            position=(0.98, top_y),
-            viewport=True,
-            font_size=status_font,
-            color="black",
-            name=status_name,
-        )
-        try:
-            status_prop = status_actor.GetTextProperty()
-            status_prop.SetJustificationToRight()
-            status_prop.SetVerticalJustificationToTop()
-        except Exception:
-            pass
-
-        hint_lines = [
+        status_lines = [
+            (
+                f"a={state.a:.2f} | n={state.n} | "
+                f"atoms={len(pts)} | res={state.sphere_res} ({'manual' if state.manual_res else 'auto'})"
+            ),
             "4-8 switch lattice type",
             "N adjust atom count",
             "U toggle unit cell",
-            "R enable auto-res",
-            "A reset a",
+            "R adjust resolution",
+            "T enable auto-res",
+            "A adjust a",
+            "S reset a",
         ]
-        hint_font = fit_font_size(hint_lines, preferred=11, minimum=7, max_width_px=int(win_w * 0.44))
-        line_px = hint_font + 7
-        line_dy = line_px / max(1, win_h)
-        y0 = top_y - ((status_font + 9) / max(1, win_h))
-        for idx, line in enumerate(hint_lines):
-            hint_actor = plotter.add_text(
+        status_font = fit_font_size(status_lines, preferred=11, minimum=7, max_width_px=int(win_w * 0.62))
+        line_px = status_font + 7
+        line_spacing = 1.4
+        line_dy = (line_px * line_spacing) / max(1, win_h)
+        for idx, line in enumerate(status_lines):
+            status_actor = plotter.add_text(
                 line,
-                position=(0.98, max(0.02, y0 - (idx * line_dy))),
+                position=(0.98, max(0.02, 0.98 - (idx * line_dy))),
                 viewport=True,
-                font_size=hint_font,
+                font_size=status_font,
                 color="black",
-                name=f"{hint_name_prefix}{idx}",
+                name=f"{status_name_prefix}{idx}",
             )
             try:
-                hint_prop = hint_actor.GetTextProperty()
-                hint_prop.SetJustificationToRight()
-                hint_prop.SetVerticalJustificationToTop()
+                status_prop = status_actor.GetTextProperty()
+                status_prop.SetJustificationToRight()
+                status_prop.SetVerticalJustificationToTop()
             except Exception:
                 pass
         if reset_camera:
@@ -298,17 +271,6 @@ def run_interactive_viewer() -> None:
             except Exception:
                 pass
         plotter.render()
-
-    def on_a_change(value: float) -> None:
-        state.a = max(0.01, float(value))
-        redraw()
-
-    def on_res_change(value: float) -> None:
-        nonlocal syncing_res_slider
-        if not syncing_res_slider and not initializing_controls:
-            state.manual_res = True
-        state.sphere_res = max(MANUAL_MIN_RES, int(round(value)))
-        redraw()
 
     def on_kind_change(kind: str) -> None:
         state.kind = kind
@@ -334,6 +296,40 @@ def run_interactive_viewer() -> None:
             state.n = int(new_n)
             redraw(reset_camera=True)
 
+    def ask_a_input() -> None:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        new_a = simpledialog.askfloat(
+            "Lattice constant a",
+            "Lattice constant a (float > 0):",
+            parent=root,
+            minvalue=0.01,
+            initialvalue=state.a,
+        )
+        root.destroy()
+        if new_a is not None:
+            state.a = max(0.01, float(new_a))
+            redraw()
+
+    def ask_res_input() -> None:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        new_res = simpledialog.askinteger(
+            "Sphere resolution",
+            f"Sphere resolution (integer {MANUAL_MIN_RES}-{MANUAL_MAX_RES}):",
+            parent=root,
+            minvalue=MANUAL_MIN_RES,
+            maxvalue=MANUAL_MAX_RES,
+            initialvalue=state.sphere_res,
+        )
+        root.destroy()
+        if new_res is not None:
+            state.sphere_res = int(new_res)
+            state.manual_res = True
+            redraw()
+
     def on_resize(*_) -> None:
         if layout_state["updating"]:
             return
@@ -348,43 +344,20 @@ def run_interactive_viewer() -> None:
 
     def reset_a_value() -> None:
         state.a = 1.0
-        if a_slider is not None:
-            try:
-                a_slider.GetRepresentation().SetValue(state.a)
-            except Exception:
-                pass
         redraw()
-
-    a_slider = plotter.add_slider_widget(
-        callback=on_a_change,
-        rng=(0.2, 5.0),
-        value=state.a,
-        title="a (lattice constant)",
-        pointa=(0.02, 0.08),
-        pointb=(0.44, 0.08),
-        style="modern",
-        interaction_event="end",
-    )
-    res_slider = plotter.add_slider_widget(
-        callback=on_res_change,
-        rng=(MANUAL_MIN_RES, MANUAL_MAX_RES),
-        value=state.sphere_res,
-        title="sphere resolution",
-        pointa=(0.56, 0.08),
-        pointb=(0.98, 0.08),
-        style="modern",
-        interaction_event="end",
-    )
-    initializing_controls = False
 
     plotter.add_key_event("n", ask_n_input)
     plotter.add_key_event("N", ask_n_input)
-    plotter.add_key_event("r", reset_auto_res)
-    plotter.add_key_event("R", reset_auto_res)
+    plotter.add_key_event("a", ask_a_input)
+    plotter.add_key_event("A", ask_a_input)
+    plotter.add_key_event("s", reset_a_value)
+    plotter.add_key_event("S", reset_a_value)
+    plotter.add_key_event("r", ask_res_input)
+    plotter.add_key_event("R", ask_res_input)
+    plotter.add_key_event("t", reset_auto_res)
+    plotter.add_key_event("T", reset_auto_res)
     plotter.add_key_event("u", toggle_unit_cell)
     plotter.add_key_event("U", toggle_unit_cell)
-    plotter.add_key_event("a", reset_a_value)
-    plotter.add_key_event("A", reset_a_value)
     for idx, kind in enumerate(LATTICE_KINDS, start=4):
         plotter.add_key_event(str(idx), lambda k=kind: on_kind_change(k))
     resize_observer = plotter.iren.add_observer("ConfigureEvent", on_resize) if plotter.iren is not None else None
