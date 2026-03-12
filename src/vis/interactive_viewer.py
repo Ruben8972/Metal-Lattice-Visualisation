@@ -180,9 +180,22 @@ def run_interactive_viewer() -> None:
         except Exception:
             pass
     status_name = "status_text"
-    kind_label_names = tuple(f"kind_label_{k}" for k in LATTICE_KINDS)
-    panel_text_names = ("lattice_panel_title", "unit_cell_label", *kind_label_names)
+    hint_name_prefix = "hint_text_"
+    left_panel_name = "left_panel_text"
     layout_state = {"size": None, "updating": False}
+
+    def text_block_size(lines: list[str], font_size: int) -> tuple[int, int]:
+        char_w = max(6, int(font_size * 0.66))
+        line_h = font_size + 7
+        width_px = max((len(line) for line in lines), default=1) * char_w
+        height_px = len(lines) * line_h
+        return width_px, height_px
+
+    def fit_font_size(lines: list[str], preferred: int, minimum: int, max_width_px: int) -> int:
+        size = preferred
+        while size > minimum and text_block_size(lines, size)[0] > max_width_px:
+            size -= 1
+        return size
 
     def redraw(reset_camera: bool = False) -> None:
         nonlocal res_slider, syncing_res_slider
@@ -203,22 +216,75 @@ def run_interactive_viewer() -> None:
 
         plotter.add_mesh(glyphs, scalars="colors", rgb=True, name="lattice", reset_camera=reset_camera)
 
-        plotter.add_text(
-            (
-                f"kind={_display_kind_name(state.kind)} | a={state.a:.2f} | n={state.n} | "
-                f"res={state.sphere_res} ({'manual' if state.manual_res else 'auto'}) | "
-                f"unit_cell={state.unit_cell} | atoms={len(pts)}\n"
-                "4-8: choose lattice type\n"
-                "N: edit atom count\n"
-                "R: enable auto-resolution\n"
-                "U: toggle unit cell\n"
-                "A: reset lattice constant"
-            ),
-            position="upper_right",
-            font_size=10,
+        win_w, win_h = plotter.ren_win.GetSize()
+        left_lines = ["LATTICE TYPE"]
+        for idx, kind in enumerate(LATTICE_KINDS, start=4):
+            marker = ">" if state.kind == kind else " "
+            left_lines.append(f"{marker} {idx} {_display_kind_name(kind)}")
+        left_lines.append(f"UNIT CELL: {'ON' if state.unit_cell else 'OFF'}")
+        left_font = fit_font_size(left_lines, preferred=12, minimum=9, max_width_px=int(win_w * 0.38))
+        left_actor = plotter.add_text(
+            "\n".join(left_lines),
+            position=(0.02, 0.98),
+            viewport=True,
+            font_size=left_font,
+            color="black",
+            name=left_panel_name,
+        )
+        try:
+            left_prop = left_actor.GetTextProperty()
+            left_prop.SetJustificationToLeft()
+            left_prop.SetVerticalJustificationToTop()
+        except Exception:
+            pass
+
+        top_y = 0.98
+        status_line = (
+            f"a={state.a:.2f} | n={state.n} | "
+            f"atoms={len(pts)} | res={state.sphere_res} ({'manual' if state.manual_res else 'auto'})"
+        )
+        status_font = fit_font_size([status_line], preferred=11, minimum=7, max_width_px=int(win_w * 0.62))
+        status_actor = plotter.add_text(
+            status_line,
+            position=(0.98, top_y),
+            viewport=True,
+            font_size=status_font,
             color="black",
             name=status_name,
         )
+        try:
+            status_prop = status_actor.GetTextProperty()
+            status_prop.SetJustificationToRight()
+            status_prop.SetVerticalJustificationToTop()
+        except Exception:
+            pass
+
+        hint_lines = [
+            "4-8 switch lattice type",
+            "N adjust atom count",
+            "U toggle unit cell",
+            "R enable auto-res",
+            "A reset a",
+        ]
+        hint_font = fit_font_size(hint_lines, preferred=11, minimum=7, max_width_px=int(win_w * 0.44))
+        line_px = hint_font + 7
+        line_dy = line_px / max(1, win_h)
+        y0 = top_y - ((status_font + 9) / max(1, win_h))
+        for idx, line in enumerate(hint_lines):
+            hint_actor = plotter.add_text(
+                line,
+                position=(0.98, max(0.02, y0 - (idx * line_dy))),
+                viewport=True,
+                font_size=hint_font,
+                color="black",
+                name=f"{hint_name_prefix}{idx}",
+            )
+            try:
+                hint_prop = hint_actor.GetTextProperty()
+                hint_prop.SetJustificationToRight()
+                hint_prop.SetVerticalJustificationToTop()
+            except Exception:
+                pass
         if reset_camera:
             # Keep a consistent outside view after topology changes (n/kind/unit-cell).
             plotter.reset_camera()
@@ -248,10 +314,6 @@ def run_interactive_viewer() -> None:
         state.kind = kind
         redraw(reset_camera=True)
 
-    def on_unit_toggle(value: bool) -> None:
-        state.unit_cell = bool(value)
-        redraw(reset_camera=True)
-
     def toggle_unit_cell() -> None:
         state.unit_cell = not state.unit_cell
         redraw(reset_camera=True)
@@ -272,69 +334,12 @@ def run_interactive_viewer() -> None:
             state.n = int(new_n)
             redraw(reset_camera=True)
 
-    def build_top_left_controls() -> None:
-        layout_state["updating"] = True
-        try:
-            plotter.clear_radio_button_widgets()
-            plotter.clear_button_widgets()
-            for name in panel_text_names:
-                plotter.remove_actor(name)
-
-            _, height = plotter.ren_win.GetSize()
-            panel_x = 20
-            panel_y_top = int(height - 68)
-            row_gap = 30
-
-            plotter.add_text(
-                "LATTICE TYPE",
-                position=(panel_x, panel_y_top + 24),
-                font_size=12,
-                color="black",
-                shadow=False,
-                name="lattice_panel_title",
-            )
-
-            for idx, kind in enumerate(LATTICE_KINDS):
-                y = panel_y_top - (idx * row_gap)
-                plotter.add_radio_button_widget(
-                    callback=lambda k=kind: on_kind_change(k),
-                    radio_button_group="lattice_kind",
-                    value=state.kind == kind,
-                    position=(panel_x, y),
-                    size=18,
-                )
-                plotter.add_text(
-                    _display_kind_name(kind),
-                    position=(panel_x + 26, y + 1),
-                    font_size=10,
-                    color="black",
-                    name=f"kind_label_{kind}",
-                )
-
-            unit_y = panel_y_top - (len(LATTICE_KINDS) * row_gap) - 6
-            plotter.add_checkbox_button_widget(
-                callback=on_unit_toggle,
-                value=state.unit_cell,
-                position=(panel_x, unit_y),
-                size=18,
-            )
-            plotter.add_text(
-                "Unit Cell",
-                position=(panel_x + 26, unit_y + 1),
-                font_size=10,
-                color="black",
-                name="unit_cell_label",
-            )
-            layout_state["size"] = tuple(plotter.ren_win.GetSize())
-        finally:
-            layout_state["updating"] = False
-
     def on_resize(*_) -> None:
         if layout_state["updating"]:
             return
         size = tuple(plotter.ren_win.GetSize())
         if layout_state["size"] != size:
-            build_top_left_controls()
+            layout_state["size"] = size
             redraw()
 
     def reset_auto_res() -> None:
@@ -384,7 +389,7 @@ def run_interactive_viewer() -> None:
         plotter.add_key_event(str(idx), lambda k=kind: on_kind_change(k))
     resize_observer = plotter.iren.add_observer("ConfigureEvent", on_resize) if plotter.iren is not None else None
 
-    build_top_left_controls()
+    layout_state["size"] = tuple(plotter.ren_win.GetSize())
     redraw()
     try:
         plotter.show()
