@@ -1,0 +1,30 @@
+Defect Types in Crystal Structures (FCC, HCP, BCC)
+
+1. FCC (face-centered cubic)
+----------------------------
+- Stacking fault + Shockley partials on {111} (must-have):
+  * Stacking fault: Local disruption of the layer stacking order (for example, ABCABC -> ABCA BC).
+  * Shockley partials: Partial dislocations with Burgers vector b = a/6<112>, moving on {111} planes.
+- Twin on {111}:
+  * Twin: Mirroring of a crystal region across the {111} plane.
+- Edge/screw dislocations (b = a/2<110>) as a reference:
+  * Edge and screw dislocations with the full Burgers vector for comparison with partial dislocations.
+
+2. HCP (hexagonal close-packed)
+-------------------------------
+- Basal stacking faults (I1/I2/E):
+  * Stacking defects in the basal plane (0001).
+  * I1, I2, and E represent different stacking sequences.
+- Twinning on {10-12} (tension):
+  * Tensile twin on the {10-12} plane, typical under tension along the c-axis.
+- a-type dislocation on the basal plane:
+  * Burgers vector b = a/3<11-20>, lying in the basal plane.
+
+3. BCC (body-centered cubic)
+----------------------------
+- Screw dislocation b = a/2<111> (qualitative display of its non-planar character):
+  * Screw dislocation with a core distributed across multiple slip planes.
+- Edge dislocation for comparison:
+  * Edge dislocation as a reference case.
+- Optional: twinning band {112}<111>:
+  * Twinning bands on {112} planes with direction <111>.

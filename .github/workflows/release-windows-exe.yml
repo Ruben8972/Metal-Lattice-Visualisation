@@ -30,16 +30,16 @@ jobs:
         run: python -m pytest -q
 
       - name: Build .exe with PyInstaller
-        run: pyinstaller --noconfirm --clean --onefile --windowed --name Metallgitter-Visualisierung main.py
+        run: pyinstaller --noconfirm --clean --onefile --windowed --name Metal-Lattice-Visualisation main.py
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Metallgitter-Visualisierung-windows-exe
-          path: dist/Metallgitter-Visualisierung.exe
+          name: Metal-Lattice-Visualisation-windows-exe
+          path: dist/Metal-Lattice-Visualisation.exe
 
       - name: Publish GitHub release asset
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Metallgitter-Visualisierung.exe
+          files: dist/Metal-Lattice-Visualisation.exe

@@ -30,10 +30,10 @@ if (-not $SkipTests) {
 
 Step "Building Windows .exe (release-like)"
 Run-Checked {
-    python -m PyInstaller --noconfirm --clean --onefile --windowed --name Metallgitter-Visualisierung main.py
+    python -m PyInstaller --noconfirm --clean --onefile --windowed --name Metal-Lattice-Visualisation main.py
 } "PyInstaller build"
 
-$exePath = Join-Path -Path (Get-Location) -ChildPath "dist\\Metallgitter-Visualisierung.exe"
+$exePath = Join-Path -Path (Get-Location) -ChildPath "dist\\Metal-Lattice-Visualisation.exe"
 if (-not (Test-Path $exePath)) {
     throw "Build finished without exe: $exePath"
 }

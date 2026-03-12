@@ -1,18 +1,42 @@
-# Metallgitter Visualisierung
+# Metal Lattice Visualisation
 
-Interaktive Visualisierung von BCC/FCC/HCP Gittern mit PyVista.
+Interactive visualization of BCC, FCC, and HCP crystal lattices with PyVista.
+The project generates crystal structures programmatically and renders them in an interactive 3D viewer.
 
-## Lokal starten
+![Main viewer screenshot](docs/main-view.png)
+
+## Features
+
+- Generates BCC, FCC, HCP, and layered FCC(111) structures
+- Interactive 3D rendering with adjustable atom count and sphere resolution
+- Plane-based color mapping for improved structural readability
+- Automated tests for lattice generation, plotting helpers, and resolution logic
+- Windows `.exe` build pipeline via GitHub Actions
+
+## Quick Start
 
 ```powershell
+python -m pip install -e .[dev]
 python main.py
 ```
 
-Alternativ nach Installation:
+After installation, you can also launch the app with:
 
 ```powershell
-metallgitter-vis
+metal-lattice-vis
 ```
+
+![Unit cell detail](docs/unit-cell.png)
+
+## Viewer Controls
+
+- `4-8`: switch lattice type
+- `N`: adjust atom count per direction
+- `U`: toggle unit cell mode
+- `R`: set manual sphere resolution
+- `T`: re-enable automatic resolution
+- `A`: adjust the lattice constant `a`
+- `S`: reset the lattice constant
 
 ## Tests
 
@@ -20,32 +44,39 @@ metallgitter-vis
 python -m pytest -q
 ```
 
-## Lokaler Release-Check (ohne Push/Tag)
+## Project Structure
 
-Damit testest du lokal genau den gleichen Build-Typ wie im GitHub Release:
+```text
+src/vis/generation.py          Lattice generation logic
+src/vis/plotting.py            Plotting and color helpers
+src/vis/interactive_viewer.py  Interactive PyVista application
+tests/                         Automated test suite
+```
+
+## Local Release Check
+
+Use the following script to run the same release-style build that is used in GitHub Actions:
 
 ```powershell
 .\scripts\release-check.ps1
 ```
 
-Optional:
+Optional flags:
 
 ```powershell
 .\scripts\release-check.ps1 -SkipTests
 .\scripts\release-check.ps1 -OpenDist
 ```
 
-## Release mit Windows `.exe`
+## Windows `.exe` Releases
 
-Die GitHub Action `release-windows-exe.yml` baut bei Tags `v*` automatisch eine `.exe` und haengt sie an den Release.
-
-Beispiel:
+The `release-windows-exe.yml` workflow automatically builds a Windows executable for tags matching `v*` and publishes it as a release asset.
 
 ```powershell
 git tag v0.2.3
 git push origin v0.2.3
 ```
 
-Danach findest du `Metallgitter-Visualisierung.exe` unter:
-- GitHub Release Assets (beim Tag)
-- Actions Artifacts (zusaetzlich)
+You can then find `Metal-Lattice-Visualisation.exe` in:
+- GitHub release assets
+- GitHub Actions artifacts

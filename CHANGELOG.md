@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-03-01
+
+### Added
+- Local Windows release check script for validating the release-style build before tagging.
+
+### Changed
+- Refined interactive controls and improved the in-viewer status overlay layout.
+- Stabilized overlay anchoring and text placement for release builds and window resizing.
+
+## [0.2.1] - 2026-02-28
+
+### Added
+- Adaptive sphere resolution based on atom count.
+- Tests for the interactive viewer resolution logic.
+
+### Changed
+- Improved interactive viewer controls and plotting behavior.
+
 ## [0.2.0] - 2026-02-28
 
 ### Added
