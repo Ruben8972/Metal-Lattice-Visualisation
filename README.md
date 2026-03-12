@@ -26,8 +26,6 @@ After installation, you can also launch the app with:
 metal-lattice-vis
 ```
 
-![Unit cell detail](docs/unit-cell.png)
-
 ## Viewer Controls
 
 - `4-8`: switch lattice type

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-03-12
+
+### Added
+- MIT license.
+- README screenshot for the main viewer.
+
+### Changed
+- Switched public-facing project naming to English.
+- Updated package, script, and Windows executable naming to match the repository name.
+- Refined the README and supporting project documentation for the current release state.
+
 ## [0.2.2] - 2026-03-01
 
 ### Added
