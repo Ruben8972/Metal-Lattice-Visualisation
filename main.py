@@ -1,3 +1,5 @@
+"""Project-level launcher for local source runs."""
+
 from pathlib import Path
 import sys
 
@@ -7,7 +9,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from vis.gui import run_gui
+from vis.main import main
+
 
 if __name__ == "__main__":
-    run_gui()
+    main()
